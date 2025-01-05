@@ -1,4 +1,5 @@
 @ChatBase.Backend_HostAddress = http://localhost:5119
+@ChatBase.Frontend_HostAddress = http://localhost:5173
 
 GET {{ChatBase.Backend_HostAddress}}/weatherforecast/
 Accept: application/json

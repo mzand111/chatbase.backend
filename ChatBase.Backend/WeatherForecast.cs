@@ -1,3 +1,5 @@
+using System;
+
 namespace ChatBase.Backend
 {
     public class WeatherForecast
