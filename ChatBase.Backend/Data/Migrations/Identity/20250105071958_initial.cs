@@ -1,9 +1,9 @@
-﻿using System;
-using Microsoft.EntityFrameworkCore.Migrations;
+﻿using Microsoft.EntityFrameworkCore.Migrations;
+using System;
 
 #nullable disable
 
-namespace ChatBase.Backend.Migrations
+namespace ChatBase.Backend.Migrations.Identity
 {
     /// <inheritdoc />
     public partial class initial : Migration

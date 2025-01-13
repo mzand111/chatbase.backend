@@ -9,7 +9,7 @@ namespace ChatBase.Backend.Domain.Identity
         public string? LastName { get; set; }
         public int UserNameChangeLimit { get; set; } = 10;
         public DateTimeOffset? RemoveTime { get; set; }
-
+        public Guid? CurrentProfileImageId { get; set; }
 
         public string DisplayTitle()
         {

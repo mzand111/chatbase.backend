@@ -12,13 +12,13 @@ namespace ChatBase.Backend.Domain.Identity
 {
     public class ApplicationUserManager : UserManager<ApplicationUser>
     {
-        private readonly UserStore<ApplicationUser, IdentityRole<Guid>, ApplicationDbContext, Guid, IdentityUserClaim<Guid>,
+        private readonly UserStore<ApplicationUser, IdentityRole<Guid>, Data.Identity.IdentityDbContext, Guid, IdentityUserClaim<Guid>,
       IdentityUserRole<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>, IdentityRoleClaim<Guid>>
       _store;
 
         public ApplicationUserManager(IUserStore<ApplicationUser> store, IOptions<IdentityOptions> optionsAccessor, IPasswordHasher<ApplicationUser> passwordHasher, IEnumerable<IUserValidator<ApplicationUser>> userValidators, IEnumerable<IPasswordValidator<ApplicationUser>> passwordValidators, ILookupNormalizer keyNormalizer, IdentityErrorDescriber errors, IServiceProvider services, ILogger<UserManager<ApplicationUser>> logger) : base(store, optionsAccessor, passwordHasher, userValidators, passwordValidators, keyNormalizer, errors, services, logger)
         {
-            _store = (UserStore<ApplicationUser, IdentityRole<Guid>, ApplicationDbContext, Guid, IdentityUserClaim<Guid>,
+            _store = (UserStore<ApplicationUser, IdentityRole<Guid>, Data.Identity.IdentityDbContext, Guid, IdentityUserClaim<Guid>,
           IdentityUserRole<Guid>, IdentityUserLogin<Guid>, IdentityUserToken<Guid>, IdentityRoleClaim<Guid>>)store;
         }
 
