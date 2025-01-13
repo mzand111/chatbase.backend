@@ -111,5 +111,165 @@ namespace ChatBase.Backend.Controllers
 
             return token;
         }
+
+        /// <summary>
+        /// This method will statically return this string: 'Hello from SignalR chat service!'. Anonymous call is allowed. 
+        /// </summary>
+        /// <remarks>Call this method to check the health of your connection to SignalR chat server</remarks>
+        [HttpGet("HeartBeet")]
+        [AllowAnonymous]
+        public async Task<IActionResult> HeartBeet()
+        {
+            return Ok("Hello from SignalR chat service!");
+        }
+
+        /// <summary>
+        /// This method will statically return this string: 'You are authenticated. Hello from SignalR chat service!' when called by an authenticated user. Anonymous call is not allowed. 
+        /// </summary>
+        /// <remarks>Call this method to check if the user is successfully authenticated by the SignalR chat server</remarks>
+        [Authorize]
+        [HttpGet("AuthorizedHeartBeet")]
+        public async Task<IActionResult> AuthorizedHeartBeet()
+        {
+            return Ok("You are authenticated. Hello from SignalR chat service!");
+        }
+
+        /// <summary>
+        /// Resets the password of the caller user. 
+        /// </summary>
+        /// <param name="oldPassword">Old password</param>
+        /// <param name="newPassword">New password</param>
+        /// <returns></returns>
+        [Authorize]
+        [HttpPost("ResetMyPassword")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> ResetMyPassword(string oldPassword, string newPassword)
+        {
+
+
+            var user = await _userManager.FindByIdAsync(UserId.Value.ToString());
+            if (user == null)
+            {
+                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+            }
+
+            var changePasswordResult = await _userManager.ChangePasswordAsync(user, oldPassword, newPassword);
+            if (!changePasswordResult.Succeeded)
+            {
+                string s = "";
+                foreach (var error in changePasswordResult.Errors)
+                {
+                    s += (s.Length > 0 ? ", " : "") + error.Description;
+                }
+
+                return BadRequest("Error in resetting password:" + s);
+            }
+            return Ok();
+        }
+
+
+        /// <summary>
+        /// (To be called just by SuperAdmin users): Resets the password of the given user. 
+        /// </summary>
+        /// <param name="userId">Id of the user</param>
+        /// <param name="newPassword">New password</param>
+        /// <returns></returns>
+        [Authorize(Roles = "SuperAdmin")]
+        [HttpPost("AdminResetPassword")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> AdminResetPassword(Guid userId, string newPassword)
+        {
+
+
+            ApplicationUser user = null;
+
+
+            //First error is for old password
+            if (userId == Guid.Empty)
+            {
+                return BadRequest("User id is not valid");
+            }
+            if (userId == Guid.Empty)
+            {
+                return BadRequest("User id is not valid");
+            }
+
+
+            user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user == null)
+            {
+                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+            }
+            var removePasswordResult = await _userManager.RemovePasswordAsync(user);
+            if (!removePasswordResult.Succeeded)
+            {
+                string s = "";
+                foreach (var error in removePasswordResult.Errors)
+                {
+                    s += (s.Length > 0 ? ", " : "") + error.Description;
+                }
+
+                return BadRequest("Error in removing password:" + s);
+            }
+
+            var addPasswordResult = await _userManager.AddPasswordAsync(user, newPassword);
+            if (!addPasswordResult.Succeeded)
+            {
+                string s = "";
+                foreach (var error in addPasswordResult.Errors)
+                {
+                    s += (s.Length > 0 ? ", " : "") + error.Description;
+                }
+
+                return BadRequest("Error in removing password:" + s);
+            }
+            return Ok();
+
+        }
+
+        [Authorize]
+        [HttpPost("UpdateMyProfile")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> UpdateMyProfile(ProfileUserDto profile)
+        {
+            ApplicationUser user = null;
+            user = await _userManager.FindByIdAsync(UserId.ToString());
+            if (user == null)
+            {
+                return NotFound($"Unable to load user with ID '{_userManager.GetUserId(User)}'.");
+            }
+            var firstName = user.FirstName;
+            var lastName = user.LastName;
+            if (profile.FirstName != firstName)
+            {
+                user.FirstName = profile.FirstName;
+                await _userManager.UpdateAsync(user);
+            }
+            if (profile.LastName != lastName)
+            {
+                user.LastName = profile.LastName;
+                await _userManager.UpdateAsync(user);
+            }
+
+
+
+            var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
+            if (profile.PhoneNumber != phoneNumber)
+            {
+                var setPhoneResult = await _userManager.SetPhoneNumberAsync(user, profile.PhoneNumber);
+                if (!setPhoneResult.Succeeded)
+                {
+                    var statusMessage = "Unexpected error when trying to set phone number.";
+                    return BadRequest(statusMessage);
+                }
+            }
+            return Ok();
+        }
     }
 }

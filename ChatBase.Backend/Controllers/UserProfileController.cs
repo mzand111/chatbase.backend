@@ -57,7 +57,7 @@ namespace ChatBase.Backend.Controllers
                 else
                 {
                     height = size;
-                    width = (int)(originalImage.Width * (512.0 / originalImage.Height));
+                    width = (int)(originalImage.Width * (size * 1.0 / originalImage.Height));
                 }
 
                 // resize image
@@ -110,6 +110,7 @@ namespace ChatBase.Backend.Controllers
                             UserId = UserId.Value
 
                         });
+                        await _profileDbContext.SaveChangesAsync();
                         user.CurrentProfileImageId = newItemId;
                     }
                     await _userManager.UpdateAsync(user);
