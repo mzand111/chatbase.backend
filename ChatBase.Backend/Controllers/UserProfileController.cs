@@ -28,7 +28,7 @@ namespace ChatBase.Backend.Controllers
             _userManager = userManager;
             _profileDbContext = profileDbContext;
         }
-
+        [AllowAnonymous]
         [HttpGet("GetUserProfileImageByUserId")]
         public async Task<IActionResult> GetUserProfileImageByUserId(Guid userID, int size = 128)
         {

@@ -3,8 +3,10 @@ using ChatBase.Backend.Data.Identity;
 using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Helper.OpenApiUI;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -145,8 +147,16 @@ namespace ChatBase.Backend
                  }
              ).AddCookie(options =>
              {
-                 options.LoginPath = "/identity/account/login";
-                 options.LogoutPath = "/logout";
+                 options.LoginPath = PathString.Empty;
+                 options.LogoutPath = PathString.Empty;
+                 options.Events = new CookieAuthenticationEvents
+                 {
+                     OnRedirectToLogin = context =>
+                     {
+                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                         return Task.CompletedTask;
+                     }
+                 };
              })
              // Adding Jwt Bearer
              .AddJwtBearer(options =>
@@ -188,6 +198,18 @@ namespace ChatBase.Backend
              options => options.UseSqlServer(defualtConnectionString)
              );
 
+            var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy(name: MyAllowSpecificOrigins,
+                                  policy =>
+                                  {
+                                      policy.AllowAnyOrigin();
+                                      policy.AllowAnyMethod();
+                                      policy.AllowAnyHeader();
+                                  });
+            });
+
             var app = builder.Build();
 
             using (var scope = app.Services.CreateScope())
@@ -221,7 +243,7 @@ namespace ChatBase.Backend
             app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseRouting();
-
+            app.UseCors(MyAllowSpecificOrigins);
             app.UseHttpsRedirection();
             app.UseAuthentication();
             app.UseAuthorization();

@@ -18,14 +18,14 @@ using System.Threading.Tasks;
 
 namespace ChatBase.Backend.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("[controller]")]
     [ApiController]
-    public class AuthController : BaseController
+    public class IdentityController : BaseController
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
 
-        public AuthController(UserManager<ApplicationUser> userManager
+        public IdentityController(UserManager<ApplicationUser> userManager
             , IConfiguration configuration)
         {
             _userManager = userManager;
@@ -50,7 +50,7 @@ namespace ChatBase.Backend.Controllers
                     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                     new Claim(JwtRegisteredClaimNames.Name, user.FirstName),
                     new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
-                     new Claim("UserId", user.Id.ToString()),
+                    new Claim("UserId", user.Id.ToString()),
                 };
 
                 foreach (var userRole in userRoles)
@@ -132,6 +132,24 @@ namespace ChatBase.Backend.Controllers
         public async Task<IActionResult> AuthorizedHeartBeet()
         {
             return Ok("You are authenticated. Hello from SignalR chat service!");
+        }
+
+        [Authorize]
+        [HttpGet("MyProfile")]
+        public async Task<IActionResult> MyProfile()
+        {
+            var user = await _userManager.FindByNameAsync(UserName);
+            var userRoles = await _userManager.GetRolesAsync(user);
+            return Ok(new UserProfileResponse
+            {
+
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                UserName = user.UserName,
+                Id = user.Id,
+                RoleNames = userRoles.Count > 0 ? string.Join(userRoles[0], ",") : "",
+                PhoneNumber = user.PhoneNumber,
+            });
         }
 
         /// <summary>
