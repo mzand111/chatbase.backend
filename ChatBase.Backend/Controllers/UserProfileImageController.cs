@@ -1,4 +1,5 @@
 ﻿using ChatBase.Backend.Controllers.Base;
+using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Infrastructure.Profile;
 using Microsoft.AspNetCore.Authorization;
@@ -39,7 +40,10 @@ namespace ChatBase.Backend.Controllers
             }
 
             var profileImageRecord = await _profileRepo.FirstOrDefaultAsync(uu => uu.ID == user.CurrentProfileImageId.Value);
-
+            if (profileImageRecord == null)
+            {
+                return Ok(null);
+            }
             // Retrieve the user's profile image from the database
             byte[] imageBytes = profileImageRecord.Image;
 
@@ -100,7 +104,7 @@ namespace ChatBase.Backend.Controllers
                     {
                         await file.CopyToAsync(dataStream);
                         var newItemId = Guid.NewGuid();
-                        await _profileRepo.InsertAsync(new Domain.Profile.UserProfileImage()
+                        var item = await _profileRepo.InsertAsync(new UserProfileImageEntity()
                         {
                             ID = newItemId,
                             CreationTime = DateTime.Now,

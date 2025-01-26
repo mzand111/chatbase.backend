@@ -3,6 +3,7 @@ using ChatBase.Backend.Data.Identity;
 using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Helper.OpenApiUI;
+using ChatBase.Backend.Infrastructure.Profile;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
@@ -135,6 +136,8 @@ namespace ChatBase.Backend
              .AddUserManager<ApplicationUserManager>()
              .AddDefaultTokenProviders();
             // .AddApiEndpoints();
+
+            builder.Services.AddTransient<IProfileRepository, ProfileRepository>();
 
             builder.Services.AddControllers();
 
