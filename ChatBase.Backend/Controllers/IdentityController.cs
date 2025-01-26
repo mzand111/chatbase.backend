@@ -83,6 +83,7 @@ namespace ChatBase.Backend.Controllers
                     FirstName = user.FirstName,
                     LastName = user.LastName,
                     UserName = user.UserName,
+                    ProfileImageId = user.CurrentProfileImageId,
                     Id = user.Id,
                     RoleNames = userRoles.Count > 0 ? string.Join(userRoles[0], ",") : "",
                     PhoneNumber = user.PhoneNumber,
@@ -149,6 +150,7 @@ namespace ChatBase.Backend.Controllers
                 Id = user.Id,
                 RoleNames = userRoles.Count > 0 ? string.Join(userRoles[0], ",") : "",
                 PhoneNumber = user.PhoneNumber,
+                ProfileImageId = user.CurrentProfileImageId
             });
         }
 
@@ -274,8 +276,6 @@ namespace ChatBase.Backend.Controllers
                 user.LastName = profile.LastName;
                 await _userManager.UpdateAsync(user);
             }
-
-
 
             var phoneNumber = await _userManager.GetPhoneNumberAsync(user);
             if (profile.PhoneNumber != phoneNumber)

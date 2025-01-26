@@ -24,10 +24,18 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.21.0" />
+    <PackageReference Include="MZBase.Domain" Version="1.0.8" />
+    <PackageReference Include="MZBase.EntityFrameworkCore" Version="1.0.5" />
+    <PackageReference Include="MZBase.Infrastructure" Version="1.0.4" />
     <PackageReference Include="SignalRSwaggerGen" Version="4.7.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
     <PackageReference Include="Unchase.Swashbuckle.AspNetCore.Extensions" Version="2.7.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Infrastructure\Chat\" />
+    <Folder Include="web_resources\" />
   </ItemGroup>
 
 </Project>

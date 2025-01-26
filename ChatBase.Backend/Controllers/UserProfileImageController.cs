@@ -1,11 +1,10 @@
 ﻿using ChatBase.Backend.Controllers.Base;
-using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
+using ChatBase.Backend.Infrastructure.Profile;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
@@ -18,15 +17,15 @@ namespace ChatBase.Backend.Controllers
 {
     [Route("[controller]")]
     [ApiController]
-    public class UserProfileController : BaseController
+    public class UserProfileImageController : BaseController
     {
         private readonly UserManager<ApplicationUser> _userManager;
-        private readonly ProfileDbContext _profileDbContext;
+        private readonly IProfileRepository _profileRepo;
 
-        public UserProfileController(UserManager<ApplicationUser> userManager, ProfileDbContext profileDbContext)
+        public UserProfileImageController(UserManager<ApplicationUser> userManager, IProfileRepository profileRepo)
         {
             _userManager = userManager;
-            _profileDbContext = profileDbContext;
+            _profileRepo = profileRepo;
         }
         [AllowAnonymous]
         [HttpGet("GetUserProfileImageByUserId")]
@@ -39,7 +38,7 @@ namespace ChatBase.Backend.Controllers
                 return Ok(null);
             }
 
-            var profileImageRecord = await _profileDbContext.UserProfileImages.FirstOrDefaultAsync(uu => uu.Id == user.CurrentProfileImageId.Value);
+            var profileImageRecord = await _profileRepo.FirstOrDefaultAsync(uu => uu.ID == user.CurrentProfileImageId.Value);
 
             // Retrieve the user's profile image from the database
             byte[] imageBytes = profileImageRecord.Image;
@@ -101,16 +100,16 @@ namespace ChatBase.Backend.Controllers
                     {
                         await file.CopyToAsync(dataStream);
                         var newItemId = Guid.NewGuid();
-                        _profileDbContext.UserProfileImages.Add(new Domain.Profile.UserProfileImage()
+                        await _profileRepo.InsertAsync(new Domain.Profile.UserProfileImage()
                         {
-                            Id = newItemId,
+                            ID = newItemId,
                             CreationTime = DateTime.Now,
                             CreatorUserId = UserId.Value,
                             Image = dataStream.ToArray(),
                             UserId = UserId.Value
 
                         });
-                        await _profileDbContext.SaveChangesAsync();
+                        await _profileRepo.SaveChangesAsync();
                         user.CurrentProfileImageId = newItemId;
                     }
                     await _userManager.UpdateAsync(user);
@@ -120,6 +119,31 @@ namespace ChatBase.Backend.Controllers
                 {
                     return BadRequest("File is empty");
                 }
+            }
+            catch (Exception ex)
+            {
+                //_logger.LogError(ex, "Error in setting profile image");
+                return StatusCode(500, "Error in setting profile image");
+            }
+        }
+
+        [Authorize]
+        [HttpDelete("RemoveMyProfileImage")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<ActionResult> RemoveMyProfileImage()
+        {
+            var user = await _userManager.FindByIdAsync(UserId.ToString());
+            string path = "";
+            try
+            {
+                using (var dataStream = new MemoryStream())
+                {
+                    user.CurrentProfileImageId = null;
+                }
+                await _userManager.UpdateAsync(user);
+                return Ok();
+
             }
             catch (Exception ex)
             {

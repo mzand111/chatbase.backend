@@ -12,5 +12,6 @@ namespace ChatBase.Backend.Domain.Identity.Dto
         public string? PhoneNumber { get; set; }
         public string Token { get; set; }
         public DateTime TokenValidTo { get; set; }
+        public Guid? ProfileImageId { get; set; }
     }
 }
