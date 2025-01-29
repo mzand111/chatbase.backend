@@ -34,17 +34,17 @@ namespace ChatBase.Backend.Domain.Chat
         /// <summary>
         /// Send time of the message in UTC
         /// </summary>
-        public DateTime SendTime { get; set; }
+        public DateTimeOffset SendTime { get; set; }
         /// <summary>
         /// Time in which message was received in UTC
         /// </summary>
-        public DateTime? ReceiveTime { get; set; }
+        public DateTimeOffset? ReceiveTime { get; set; }
         /// <summary>
         /// Time in which message was viewed in UTC
         /// </summary>
-        public DateTime? ViewTime { get; set; }
+        public DateTimeOffset? ViewTime { get; set; }
 
-        public int? ReplyTo { get; set; }
+        public int? ReplyToID { get; set; }
         public int? ForwardID { get; set; }
         public string? ForwardDetails { get; set; }
         public bool ForwardedFromGroup { get; set; }

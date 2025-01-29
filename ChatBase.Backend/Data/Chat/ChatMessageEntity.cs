@@ -18,7 +18,7 @@ namespace ChatBase.Backend.Data.Chat
             SendTime = domainModelEntity.SendTime;
             ReceiveTime = domainModelEntity.ReceiveTime;
             ViewTime = domainModelEntity.ViewTime;
-            ReplyTo = domainModelEntity.ReplyTo;
+            ReplyToID = domainModelEntity.ReplyToID;
             ForwardID = domainModelEntity.ForwardID;
             ForwardDetails = domainModelEntity.ForwardDetails;
             ForwardedFromGroup = domainModelEntity.ForwardedFromGroup;

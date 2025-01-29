@@ -42,7 +42,7 @@ public class ChatController : BaseController
             m.Body = message.Body;
             m.Type = message.Type;
             m.ForwardID = message.ForwardID;
-            m.ReplyTo = message.ReplyTo;
+            m.ReplyToID = message.ReplyTo;
 
             m.SendTime = _dateTimeProviderService.GetNow();
             m.FromUserId = UserName;

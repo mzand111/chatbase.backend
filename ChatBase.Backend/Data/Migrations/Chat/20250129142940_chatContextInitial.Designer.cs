@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ChatBase.Backend.Migrations
 {
     [DbContext(typeof(ChatDataContext))]
-    [Migration("20250129135004_initial")]
-    partial class initial
+    [Migration("20250129142940_chatContextInitial")]
+    partial class chatContextInitial
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -57,14 +57,14 @@ namespace ChatBase.Backend.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
-                    b.Property<DateTime?>("ReceiveTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("ReceiveTime")
+                        .HasColumnType("datetimeoffset");
 
-                    b.Property<int?>("ReplyTo")
+                    b.Property<int?>("ReplyToID")
                         .HasColumnType("int");
 
-                    b.Property<DateTime>("SendTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset>("SendTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.Property<string>("ToUserId")
                         .IsRequired()
@@ -74,8 +74,8 @@ namespace ChatBase.Backend.Migrations
                     b.Property<int>("Type")
                         .HasColumnType("int");
 
-                    b.Property<DateTime?>("ViewTime")
-                        .HasColumnType("datetime2");
+                    b.Property<DateTimeOffset?>("ViewTime")
+                        .HasColumnType("datetimeoffset");
 
                     b.HasKey("ID");
 

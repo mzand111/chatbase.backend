@@ -33,7 +33,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Migrations\Chat\" />
     <Folder Include="web_resources\" />
   </ItemGroup>
 
