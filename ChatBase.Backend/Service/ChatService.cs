@@ -1,5 +1,11 @@
-﻿namespace ChatBase.Backend.Service;
+﻿using Microsoft.Extensions.Logging;
+using MZBase.Infrastructure.Service;
 
-public class ChatService
+namespace ChatBase.Backend.Service;
+
+public class ChatService : BaseBusinessService<ChatService>
 {
+    public ChatService(ILogger<ChatService> logger) : base(logger)
+    {
+    }
 }

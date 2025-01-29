@@ -2,6 +2,8 @@
 using ChatBase.Backend.Domain.Chat;
 using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Infrastructure.Chat;
+using ChatBase.Backend.Lib;
+using ChatBase.Backend.Service.ServiceOutputs;
 using Microsoft.Extensions.Logging;
 using MZBase.EntityFrameworkCore;
 using MZBase.Infrastructure;
@@ -15,11 +17,17 @@ namespace ChatBase.Backend.Service
     public class ChatMessageStorageService : EFCoreStorageBusinessService<ChatMessage, ChatMessageEntity, int, ChatUnitOfWork, ChatDataContext>
     {
         private readonly ApplicationUserManager _userManager;
+        private readonly PresenceTracker _presenceTracker;
 
-        public ChatMessageStorageService(ChatUnitOfWork unitOfWork, IDateTimeProviderService dateTimeProvider, ILogger<ChatMessage> logger, ApplicationUserManager userManager)
+        public ChatMessageStorageService(ChatUnitOfWork unitOfWork,
+            IDateTimeProviderService dateTimeProvider,
+            ILogger<ChatMessage> logger,
+            ApplicationUserManager userManager,
+            PresenceTracker presenceTracker)
             : base(unitOfWork, dateTimeProvider, logger)
         {
             _userManager = userManager;
+            _presenceTracker = presenceTracker;
         }
 
         protected override async Task ValidateOnAddAsync(ChatMessage item)
@@ -54,9 +62,37 @@ namespace ChatBase.Backend.Service
             }
         }
 
-        protected override Task ValidateOnModifyAsync(ChatMessage receivedItem, ChatMessage storageItem)
+        protected override async Task ValidateOnModifyAsync(ChatMessage receivedItem, ChatMessage storageItem)
         {
-            throw new System.NotImplementedException();
+            List<ModelFieldValidationResult> _validationErrors = new List<ModelFieldValidationResult>();
+
+            await DoCommonValidationsAsync(_validationErrors, receivedItem);
+            if (receivedItem.FromUserId != storageItem.FromUserId)
+            {
+                _validationErrors.Add(new ModelFieldValidationResult()
+                {
+                    Code = _logBaseID + 1,
+                    FieldName = nameof(receivedItem.FromUserId),
+                    ValidationMessage = "The field can not be updated"
+                });
+            }
+            if (receivedItem.ToUserId != storageItem.ToUserId)
+            {
+                _validationErrors.Add(new ModelFieldValidationResult()
+                {
+                    Code = _logBaseID + 1,
+                    FieldName = nameof(receivedItem.ToUserId),
+                    ValidationMessage = "The field can not be updated"
+                });
+            }
+
+
+            if (_validationErrors.Any())
+            {
+                var exp = new ServiceModelValidationException(_validationErrors, "Error validating the model");
+                LogModify(receivedItem, "Error in Modifying item when validating:" + exp.JSONFormattedErrors, exp);
+                throw exp;
+            }
         }
         private async Task DoCommonValidationsAsync(List<ModelFieldValidationResult> validationErrors, ChatMessage item)
         {
@@ -209,6 +245,33 @@ namespace ChatBase.Backend.Service
                 });
             }
 
+        }
+
+        public async Task<List<UserContact>> GetUserContactsList(string userName)
+        {
+            var loweredUserName = userName.ToLower();
+            var allUsers = _userManager.Users.Where(uu => !uu.RemoveTime.HasValue && uu.UserName.ToLower() != loweredUserName).ToList();
+            var latestMessages = await _unitOfWork.ChatMessages.GetUserContactsListAsync(loweredUserName);
+
+            List<UserContact> res = new();
+            foreach (var user in allUsers)
+            {
+                var latestMessage = latestMessages.FirstOrDefault(lm => lm.UserName.ToLower() == user.UserName.ToLower());
+                res.Add(new UserContact()
+                {
+                    FirstName = user.FirstName,
+                    UserId = user.Id,
+                    UserName = user.UserName,
+                    DisplayTitle = user.DisplayTitle(),
+                    LastName = user.LastName,
+                    LastMessage = latestMessage?.LastMessageBody,
+                    LastMessageTime = latestMessage?.LastMessageTime,
+                    LastMessageType = latestMessage?.LastMessageType,
+                    IsOnline = await _presenceTracker.IsOnLine(loweredUserName)
+
+                });
+            }
+            return res.OrderByDescending(uu => uu.LastMessageTime).OrderByDescending(uu => uu.DisplayTitle).ToList();
         }
     }
 

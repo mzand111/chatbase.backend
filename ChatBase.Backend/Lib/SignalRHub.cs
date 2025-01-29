@@ -121,6 +121,13 @@ public class PresenceTracker
             return Task.FromResult(onlineUsers.Keys.ToArray());
         }
     }
+    public Task<bool> IsOnLine(string userName)
+    {
+        lock (onlineUsers)
+        {
+            return Task.FromResult(onlineUsers.ContainsKey(userName));
+        }
+    }
 }
 
 public class ConnectionOpenedResult

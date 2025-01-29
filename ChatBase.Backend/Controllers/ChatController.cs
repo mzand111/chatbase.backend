@@ -1,4 +1,5 @@
 ﻿using ChatBase.Backend.Controllers.Base;
+using ChatBase.Backend.Data.Chat.Outputs;
 using ChatBase.Backend.Domain.Chat;
 using ChatBase.Backend.Lib.Dto.Chat;
 using ChatBase.Backend.Service;
@@ -83,6 +84,26 @@ public class ChatController : BaseController
         try
         {
             var g = await _storageService.ItemsAsync(request);
+            return Ok(g);
+        }
+        catch (ServiceException ex)
+        {
+            return StatusCode(500, ex.ToServiceExceptionString());
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    [HttpGet("GetUserContactsList")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult<List<UserLatestMessages>>> GetUserContactsList()
+    {
+        try
+        {
+            var g = await _storageService.GetUserContactsList(UserName);
             return Ok(g);
         }
         catch (ServiceException ex)
