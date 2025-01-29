@@ -1,6 +1,6 @@
 ﻿using ChatBase.Backend.Controllers.Base;
-using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
+using ChatBase.Backend.Domain.Profile;
 using ChatBase.Backend.Infrastructure.Profile;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -104,7 +104,7 @@ namespace ChatBase.Backend.Controllers
                     {
                         await file.CopyToAsync(dataStream);
                         var newItemId = Guid.NewGuid();
-                        var item = await _profileRepo.InsertAsync(new UserProfileImageEntity()
+                        var item = _profileRepo.Insert(new UserProfileImage()
                         {
                             ID = newItemId,
                             CreationTime = DateTime.Now,

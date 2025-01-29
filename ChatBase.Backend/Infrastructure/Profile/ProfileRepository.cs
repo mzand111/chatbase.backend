@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ChatBase.Backend.Infrastructure.Profile;
 
-public class ProfileRepository : RepositoryAsync<UserProfileImageEntity, UserProfileImage, Guid>, IProfileRepository
+public class ProfileRepository : RepositoryAsync<UserProfileImage, UserProfileImageEntity, Guid>, IProfileRepository
 {
     public ProfileRepository(ProfileDbContext context) : base(context)
     {

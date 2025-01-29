@@ -1,14 +1,17 @@
 
+using ChatBase.Backend.Data.Chat;
 using ChatBase.Backend.Data.Identity;
 using ChatBase.Backend.Data.Profile;
 using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Helper.OpenApiUI;
 using ChatBase.Backend.Infrastructure.Profile;
+using ChatBase.Backend.Lib;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -138,7 +141,10 @@ namespace ChatBase.Backend
             // .AddApiEndpoints();
 
             builder.Services.AddTransient<IProfileRepository, ProfileRepository>();
-
+            builder.Services.AddDbContext<ChatDataContext>(
+                options => options.UseSqlServer(defualtConnectionString)
+            );
+            builder.Services.AddBusinessServices();
             builder.Services.AddControllers();
 
             builder.Services.AddAuthentication(
@@ -201,6 +207,17 @@ namespace ChatBase.Backend
              options => options.UseSqlServer(defualtConnectionString)
              );
 
+            #region Chat
+
+            builder.Services.AddSingleton<HubExceptionFilter>();
+            builder.Services.AddScoped<PresenceTracker>();
+            builder.Services.AddSignalR(options =>
+            {
+                options.EnableDetailedErrors = true;
+                options.AddFilter<HubExceptionFilter>();
+            });
+            #endregion
+
             var MyAllowSpecificOrigins = "_myAllowSpecificOrigins";
             builder.Services.AddCors(options =>
             {
@@ -225,6 +242,9 @@ namespace ChatBase.Backend
 
                     var profileContext = services.GetRequiredService<ProfileDbContext>();
                     await profileContext.Database.MigrateAsync();
+
+                    var chatContext = services.GetRequiredService<ChatDataContext>();
+                    await chatContext.Database.MigrateAsync();
                 }
                 catch (Exception ex)
                 {
