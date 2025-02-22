@@ -5,15 +5,19 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ChatBase.Backend.Controllers
@@ -24,12 +28,15 @@ namespace ChatBase.Backend.Controllers
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly IConfiguration _configuration;
+        private readonly IUserStore<ApplicationUser> _userStore;
 
         public IdentityController(UserManager<ApplicationUser> userManager
-            , IConfiguration configuration)
+            , IConfiguration configuration,
+            IUserStore<ApplicationUser> userStore)
         {
             _userManager = userManager;
             _configuration = configuration;
+            _userStore = userStore;
         }
         [HttpPost]
         [AllowAnonymous]
@@ -289,5 +296,118 @@ namespace ChatBase.Backend.Controllers
             }
             return Ok();
         }
+        [AllowAnonymous]
+        [HttpPost("Register")]
+        [ProducesResponseType(StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<Results<Ok, ValidationProblem>> Register(RegisterUserDto profile)
+        {
+            var user = new ApplicationUser();
+            user.FirstName = profile.FirstName;
+            user.LastName = profile.LastName;
+            user.PhoneNumber = profile.PhoneNumber;
+            await _userStore.SetUserNameAsync(user, profile.Email, CancellationToken.None);
+            var emailStore = (IUserEmailStore<ApplicationUser>)_userStore;
+            await emailStore.SetEmailAsync(user, profile.Email, CancellationToken.None);
+            var result = await _userManager.CreateAsync(user, profile.Password);
+
+            if (!result.Succeeded)
+            {
+                return CreateValidationProblem(result);
+            }
+
+            //await SendConfirmationEmailAsync(user, _userManager, HttpContext, profile.Email);
+            return TypedResults.Ok();
+        }
+        private static ValidationProblem CreateValidationProblem(string errorCode, string errorDescription) =>
+        TypedResults.ValidationProblem(new Dictionary<string, string[]> {
+            { errorCode, [errorDescription] }
+        });
+        private static ValidationProblem CreateValidationProblem(IdentityResult result)
+        {
+            // We expect a single error code and description in the normal case.
+            // This could be golfed with GroupBy and ToDictionary, but perf! :P
+            Debug.Assert(!result.Succeeded);
+            var errorDictionary = new Dictionary<string, string[]>(1);
+
+            foreach (var error in result.Errors)
+            {
+                string[] newDescriptions;
+
+                if (errorDictionary.TryGetValue(error.Code, out var descriptions))
+                {
+                    newDescriptions = new string[descriptions.Length + 1];
+                    Array.Copy(descriptions, newDescriptions, descriptions.Length);
+                    newDescriptions[descriptions.Length] = error.Description;
+                }
+                else
+                {
+                    newDescriptions = [error.Description];
+                }
+
+                errorDictionary[error.Code] = newDescriptions;
+            }
+
+            return TypedResults.ValidationProblem(errorDictionary);
+        }
+        [HttpGet]
+        public async Task<IActionResult> ConfirmEmail(string userId, string token)
+        {
+            if (userId == null || token == null)
+            {
+                return null;
+            }
+
+            var user = await _userManager.FindByIdAsync(userId);
+
+            if (user == null)
+            {
+                return null;
+            }
+
+            var result = await _userManager.ConfirmEmailAsync(user, token);
+
+            //if (result.Succeeded)
+            //{
+            //    await _emailService.SendEmail(user.Email, "BingoApp - Successfully Registered", "Congratulations,\n You have successfully activated your account!\n " +
+            //         "Welcome to the dark side.");
+            //}
+
+
+            return null;
+        }
+        //async Task SendConfirmationEmailAsync(ApplicationUser user, UserManager<ApplicationUser> userManager, HttpContext context, string email, bool isChange = false)
+        //{
+        //    //if (confirmEmailEndpointName is null)
+        //    //{
+        //    //    throw new NotSupportedException("No email confirmation endpoint was registered!");
+        //    //}
+
+        //    var code = isChange
+        //        ? await userManager.GenerateChangeEmailTokenAsync(user, email)
+        //        : await userManager.GenerateEmailConfirmationTokenAsync(user);
+        //    code = WebEncoders.Base64UrlEncode(Encoding.UTF8.GetBytes(code));
+
+        //    var userId = await userManager.GetUserIdAsync(user);
+        //    var routeValues = new RouteValueDictionary()
+        //    {
+        //        ["userId"] = userId,
+        //        ["code"] = code,
+        //    };
+
+        //    if (isChange)
+        //    {
+        //        // This is validated by the /confirmEmail endpoint on change.
+        //        routeValues.Add("changedEmail", email);
+        //    }
+
+        //    var confirmEmailUrl = linkGenerator.GetUriByName(context, confirmEmailEndpointName, routeValues)
+        //        ?? throw new NotSupportedException($"Could not find endpoint named '{confirmEmailEndpointName}'.");
+
+        //    await emailSender.SendConfirmationLinkAsync(user, email, HtmlEncoder.Default.Encode(confirmEmailUrl));
+        //}
+
+
     }
 }

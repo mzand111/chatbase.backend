@@ -87,20 +87,20 @@ namespace ChatBase.Backend
 
                     c.AddSecurityRequirement(new OpenApiSecurityRequirement
                     {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type=ReferenceType.SecurityScheme,
-                        Id="Bearer"
-                    },
-                    Scheme="oauth2",
-                    Name="Bearer",
-                    In=ParameterLocation.Header
-                },
-                new List<string>()
-            }
+                        {
+                            new OpenApiSecurityScheme
+                            {
+                                Reference = new OpenApiReference
+                                {
+                                    Type=ReferenceType.SecurityScheme,
+                                    Id="Bearer"
+                                },
+                                Scheme="oauth2",
+                                Name="Bearer",
+                                In=ParameterLocation.Header
+                            },
+                            new List<string>()
+                        }
 
                     });
                     try
@@ -211,6 +211,7 @@ namespace ChatBase.Backend
 
             builder.Services.AddSingleton<HubExceptionFilter>();
             builder.Services.AddScoped<PresenceTracker>();
+            builder.Services.AddScoped<SignalRHub>();
             builder.Services.AddSignalR(options =>
             {
                 options.EnableDetailedErrors = true;
@@ -271,6 +272,7 @@ namespace ChatBase.Backend
             app.UseAuthentication();
             app.UseAuthorization();
             app.MapControllers();
+            app.MapHub<SignalRHub>("/messagingHub");
 
             app.Run();
         }

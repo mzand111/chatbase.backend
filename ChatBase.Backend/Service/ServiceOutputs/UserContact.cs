@@ -11,6 +11,7 @@ namespace ChatBase.Backend.Service.ServiceOutputs
         public string? LastName { get; set; }
         public string DisplayTitle { get; set; }
         public bool IsOnline { get; set; }
+        public bool UserHasProfileImage { get; set; }
         public string? LastMessage { get; set; }
         public DateTimeOffset? LastMessageTime { get; set; }
         public ChatMessageType? LastMessageType { get; set; }

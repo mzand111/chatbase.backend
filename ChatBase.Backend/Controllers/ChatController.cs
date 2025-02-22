@@ -1,10 +1,12 @@
 ﻿using ChatBase.Backend.Controllers.Base;
-using ChatBase.Backend.Data.Chat.Outputs;
 using ChatBase.Backend.Domain.Chat;
+using ChatBase.Backend.Lib;
 using ChatBase.Backend.Lib.Dto.Chat;
 using ChatBase.Backend.Service;
+using ChatBase.Backend.Service.ServiceOutputs;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using MZBase.Infrastructure;
 using MZBase.Infrastructure.Service.Exceptions;
 using MZSimpleDynamicLinq.Core;
@@ -20,11 +22,15 @@ public class ChatController : BaseController
 {
     private readonly ChatMessageStorageService _storageService;
     private readonly IDateTimeProviderService _dateTimeProviderService;
+    private readonly PresenceTracker _presenceTracker;
+    private readonly IHubContext<SignalRHub> _chatHub;
 
-    public ChatController(ChatMessageStorageService storageService, IDateTimeProviderService dateTimeProviderService)
+    public ChatController(ChatMessageStorageService storageService, IDateTimeProviderService dateTimeProviderService, PresenceTracker presenceTracker, IHubContext<SignalRHub> chatHub)
     {
         _storageService = storageService;
         _dateTimeProviderService = dateTimeProviderService;
+        _presenceTracker = presenceTracker;
+        _chatHub = chatHub;
     }
 
     [ProducesResponseType(StatusCodes.Status201Created)]
@@ -99,7 +105,7 @@ public class ChatController : BaseController
     [HttpGet("GetUserContactsList")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-    public async Task<ActionResult<List<UserLatestMessages>>> GetUserContactsList()
+    public async Task<ActionResult<List<UserContact>>> GetUserContactsList()
     {
         try
         {
@@ -108,6 +114,35 @@ public class ChatController : BaseController
         }
         catch (ServiceException ex)
         {
+            return StatusCode(500, ex.ToServiceExceptionString());
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, ex.Message);
+        }
+    }
+
+    [ProducesResponseType(StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [HttpGet("SendMessage")]
+    public async Task<IActionResult> SendMessage(string toUserName, string message)
+    {
+        try
+        {
+            var userConnectionId = await _presenceTracker.GetUserConnectionId(toUserName);
+            if (userConnectionId != null)
+            {
+                //user is online
+                await _chatHub.Clients.Client(userConnectionId).SendAsync("addChatMessage", 0, UserName, message, DateTime.Now);
+            }
+            return Ok();
+        }
+        catch (ServiceException ex)
+        {
+            if (ex is ServiceModelValidationException)
+            {
+                return StatusCode(500, ex.Message + ", " + (ex as ServiceModelValidationException).JSONFormattedErrors);
+            }
             return StatusCode(500, ex.ToServiceExceptionString());
         }
         catch (Exception ex)

@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using MZBase.EntityFrameworkCore;
 using MZBase.Infrastructure;
 using MZBase.Infrastructure.Service.Exceptions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -18,7 +19,7 @@ namespace ChatBase.Backend.Service
     {
         private readonly ApplicationUserManager _userManager;
         private readonly PresenceTracker _presenceTracker;
-
+        private IChatMessageRepository _chatMessageRepository => (IChatMessageRepository)_baseRepo;
         public ChatMessageStorageService(ChatUnitOfWork unitOfWork,
             IDateTimeProviderService dateTimeProvider,
             ILogger<ChatMessage> logger,
@@ -257,6 +258,7 @@ namespace ChatBase.Backend.Service
             foreach (var user in allUsers)
             {
                 var latestMessage = latestMessages.FirstOrDefault(lm => lm.UserName.ToLower() == user.UserName.ToLower());
+                var thisUserNameLowered = user.UserName.ToLower();
                 res.Add(new UserContact()
                 {
                     FirstName = user.FirstName,
@@ -267,12 +269,21 @@ namespace ChatBase.Backend.Service
                     LastMessage = latestMessage?.LastMessageBody,
                     LastMessageTime = latestMessage?.LastMessageTime,
                     LastMessageType = latestMessage?.LastMessageType,
-                    IsOnline = await _presenceTracker.IsOnLine(loweredUserName)
+                    IsOnline = await _presenceTracker.IsOnLine(thisUserNameLowered),
+                    UserHasProfileImage = user.CurrentProfileImageId.HasValue
 
                 });
             }
-            return res.OrderByDescending(uu => uu.LastMessageTime).OrderByDescending(uu => uu.DisplayTitle).ToList();
+            return res.OrderByDescending(uu => uu.DisplayTitle).OrderByDescending(uu => uu.LastMessageTime).ToList();
         }
+        public async Task<List<ChatMessage>> GetWithDate(string who, string with, DateTime Date)
+            => await _chatMessageRepository.GetWithDate(who, with, Date);
+        public async Task<List<ChatMessage>> GetWithFromId(string who, string with, int? fromID)
+            => await _chatMessageRepository.GetWithFromId(who, with, fromID);
+        public async Task<List<ChatMessage>> GetUnreadWithFromUserName(int ID, string fromUserName, string toUserName)
+            => await _chatMessageRepository.GetUnreadWithFromUserName(ID, fromUserName, toUserName);
+        public async Task<int> UnReadMessageCount(string UserName)
+            => await _chatMessageRepository.UnReadMessageCount(UserName);
     }
 
 }

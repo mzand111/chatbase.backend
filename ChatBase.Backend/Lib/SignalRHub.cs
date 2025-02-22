@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+﻿using ChatBase.Backend.Domain.Chat;
+using ChatBase.Backend.Service;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 using SignalRSwaggerGen.Attributes;
@@ -13,38 +15,200 @@ namespace ChatBase.Backend.Lib;
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
 public class SignalRHub : Hub
 {
-    private readonly PresenceTracker presenceTracker;
+    // Client methods:
+    // addChatMessage: Called when a new message is received.
+    // addChatHistoryMessage: Called for each message in the history after the server method 'GetChatHistory' is called.
+    // noMoreHistory: Called after the server method 'GetChatHistory' is called and all history messages have been sent to the client using the 'addChatHistoryMessage' method.
+    // chatMessageReceived: Called to acknowledge message reception.
+    // chatMessageSeen: Called when a message is seen by the receiver. The client should call the server method 'ConfirmSeen' when a message is seen by the receiver for this client method to be called.
+    // isOnline
+    // isOffline
 
-    public SignalRHub(PresenceTracker presenceTracker)
+    private readonly PresenceTracker _presenceTracker;
+    private readonly ChatMessageStorageService _chatMessageStorageService;
+
+    private string LoggedInUserName
+        => this.Context.User.Identity.Name;
+
+    public SignalRHub(PresenceTracker presenceTracker, ChatMessageStorageService chatMessageStorageService)
     {
-        this.presenceTracker = presenceTracker;
+        _presenceTracker = presenceTracker;
+        _chatMessageStorageService = chatMessageStorageService;
     }
 
     [SignalRHidden]
     public override async Task OnConnectedAsync()
     {
-        await presenceTracker.ConnectionOpened(Context.User.Identity.Name, Context.ConnectionId);
+        await _presenceTracker.ConnectionOpened(Context.User.Identity.Name, Context.ConnectionId);
         await base.OnConnectedAsync();
+        await Clients.AllExcept(Context.User.Identity.Name).SendAsync("isOnline", Context.User.Identity.Name);
     }
-
 
     [SignalRHidden]
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        await presenceTracker.ConnectionClosed(Context.User.Identity.Name, Context.ConnectionId);
+        await _presenceTracker.ConnectionClosed(Context.User.Identity.Name, Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
+        await Clients.AllExcept(Context.User.Identity.Name).SendAsync("isOffline", Context.User.Identity.Name);
     }
 
     /// <summary>
-    ///     This method is called when a message is received with the specified priority
+    /// Sends a chat message to a specified user.
     /// </summary>
-    /// <param name="userId"></param>
-    /// <param name="message"></param>
-    /// <param name="priority"></param>
-    /// <returns></returns>
-    public async Task ReceiveMessage([SignalRHidden] string userId, string message, int priority)
+    /// <param name="who">The recipient of the message.</param>
+    /// <param name="message">The message content.</param>
+    public async Task SendChatMessage(string who, string message)
     {
-        await Clients.User(userId).SendAsync("ReceiveMessage", message, priority);
+        var whoConnectionId = await _presenceTracker.GetUserConnectionId(who);
+        if (whoConnectionId != null)
+        {
+            string userName = LoggedInUserName.ToLower();
+            DateTime now = DateTime.Now;
+
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                throw new InvalidOperationException("Message is empty");
+            }
+
+            ChatMessage prv = new ChatMessage()
+            {
+                FromUserId = userName.ToLower(),
+                SendTime = now,
+                Body = message,
+                Type = ChatMessageType.Text,
+                ToUserId = who.ToLower(),
+            };
+
+            var _id = await _chatMessageStorageService.AddAsync(prv);
+            prv.ID = _id;
+
+
+            await Clients.Client(whoConnectionId).SendAsync("addChatMessage", prv.ID, userName.ToLower(), message, now);
+
+            await Clients.Caller.SendAsync("chatMessageReceived", prv.ID, who.ToLower(), message, now);
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the chat history with a specified user up to a certain date.
+    /// </summary>
+    /// <param name="who">The user to retrieve chat history with.</param>
+    /// <param name="time">The date up to which to retrieve chat history.</param>
+    public async Task GetChatHistory(string who, DateTimeOffset time)
+    {
+        string userName = LoggedInUserName;
+        if (String.IsNullOrWhiteSpace(userName))
+        {
+            return;
+        }
+
+        DateTime dt = time.Date;
+        string currentUser = userName.ToLower();
+        who = who.ToLower();
+
+        if (currentUser.ToLower() == who.ToLower())
+        {
+            return;
+        }
+
+        List<ChatMessage> mm = await _chatMessageStorageService.GetWithDate(who, currentUser, dt);
+
+        if (mm.Count == 0)
+        {
+            await Clients.Caller.SendAsync("noMoreHistory");
+        }
+        else
+        {
+            foreach (var m in mm)
+            {
+                await Clients.Caller.SendAsync("addChatHistoryMessage", m.ID, m.FromUserId.ToLower(), m.ToUserId.ToLower(), m.Body, m.SendTime, m.Type,
+                    m.ViewTime.HasValue ? 1 : 0, m.ForwardDetails);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Retrieves recent chat messages with a specified user starting from a certain message ID.
+    /// </summary>
+    /// <param name="who">The user to retrieve recent chat messages with.</param>
+    /// <param name="fromID">The message ID to start retrieving from.</param>
+    public async Task GetRecentChat(string who, int? fromID)
+    {
+        string userName = LoggedInUserName.ToLower();
+        if (String.IsNullOrWhiteSpace(userName))
+        {
+            return;
+        }
+
+        string currentUser = userName.ToLower();
+        who = who.ToLower();
+
+        List<ChatMessage> mm = await _chatMessageStorageService.GetWithFromId(who, currentUser, fromID);
+        if (mm.Count == 0)
+        {
+            await Clients.Caller.SendAsync("noMoreHistory", who);
+        }
+        else
+        {
+            foreach (ChatMessage m in mm)
+            {
+                await Clients.Caller.SendAsync("addChatHistoryMessage", m.ID, m.FromUserId.ToLower(), m.ToUserId.ToLower(), m.Body, m.SendTime, m.ViewTime.HasValue ? 1 : 0, m.ForwardDetails);
+            }
+            await Clients.Caller.SendAsync("noMoreHistory", who);
+        }
+    }
+
+    /// <summary>
+    /// Confirms that a message has been seen by the receiver.
+    /// </summary>
+    /// <param name="ID">The ID of the message that has been seen.</param>
+    public async Task ConfirmSeen(int ID)
+    {
+        string userName = LoggedInUserName.ToLower();
+        if (String.IsNullOrWhiteSpace(userName))
+        {
+            return;
+        }
+
+        string currentUser = userName.ToLower();
+
+        var viewdItem = await _chatMessageStorageService.RetrieveByIdAsync(ID);
+
+        if (viewdItem != null)
+        {
+            if (viewdItem.ToUserId.ToLower() == currentUser.ToLower())
+            {
+                string who = viewdItem.FromUserId;
+
+                List<ChatMessage> mm = await _chatMessageStorageService.GetUnreadWithFromUserName(ID, who, currentUser);
+                DateTimeOffset date = DateTimeOffset.UtcNow;
+                foreach (var m in mm)
+                {
+                    m.ViewTime = date;
+                    await _chatMessageStorageService.ModifyAsync(m);
+                    if (_presenceTracker.GetUserConnectionId(currentUser) != null)
+                    {
+                        await Clients.User(who).SendAsync("chatMessageSeen", m.ID, userName.ToLower(), 1);
+                    }
+                }
+            }
+        }
+    }
+
+    /// <summary>
+    /// Gets the total count of unseen messages for the logged-in user.
+    /// </summary>
+    /// <returns>The total count of unseen messages.</returns>
+    public async Task<int> GetTotalUnSeenCount()
+    {
+        string userName = LoggedInUserName.ToLower();
+        if (String.IsNullOrWhiteSpace(userName))
+        {
+            return 0;
+        }
+        string currentUser = userName.ToLower();
+        var g1 = await _chatMessageStorageService.UnReadMessageCount(currentUser);
+        return g1;
     }
 }
 
@@ -114,7 +278,7 @@ public class PresenceTracker
         }
     }
 
-    public Task<string[]> GetOnlineUsers()
+    public Task<string[]> GetOnLineUsers()
     {
         lock (onlineUsers)
         {
