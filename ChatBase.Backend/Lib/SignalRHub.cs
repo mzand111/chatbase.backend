@@ -1,7 +1,9 @@
 ﻿using ChatBase.Backend.Domain.Chat;
+using ChatBase.Backend.Domain.Identity;
 using ChatBase.Backend.Service;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.SignalR;
 using SignalRSwaggerGen.Attributes;
 using System;
@@ -26,14 +28,18 @@ public class SignalRHub : Hub
 
     private readonly PresenceTracker _presenceTracker;
     private readonly ChatMessageStorageService _chatMessageStorageService;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     private string LoggedInUserName
         => this.Context.User.Identity.Name;
 
-    public SignalRHub(PresenceTracker presenceTracker, ChatMessageStorageService chatMessageStorageService)
+    public SignalRHub(PresenceTracker presenceTracker,
+        ChatMessageStorageService chatMessageStorageService,
+        UserManager<ApplicationUser> userManager)
     {
         _presenceTracker = presenceTracker;
         _chatMessageStorageService = chatMessageStorageService;
+        _userManager = userManager;
     }
 
     [SignalRHidden]
@@ -60,7 +66,8 @@ public class SignalRHub : Hub
     public async Task SendChatMessage(string who, string message)
     {
         var whoConnectionId = await _presenceTracker.GetUserConnectionId(who);
-        if (whoConnectionId != null)
+
+        if (_userManager.Users.Any(uu => uu.UserName.ToLower() == who.ToLower()))
         {
             string userName = LoggedInUserName.ToLower();
             DateTime now = DateTime.Now;
@@ -82,9 +89,10 @@ public class SignalRHub : Hub
             var _id = await _chatMessageStorageService.AddAsync(prv);
             prv.ID = _id;
 
-
-            await Clients.Client(whoConnectionId).SendAsync("addChatMessage", prv.ID, userName.ToLower(), message, now);
-
+            if (whoConnectionId != null)
+            {
+                await Clients.Client(whoConnectionId).SendAsync("addChatMessage", prv.ID, userName.ToLower(), message, now.ToString("yyyy-MM-dd HH:mm"));
+            }
             await Clients.Caller.SendAsync("chatMessageReceived", prv.ID, who.ToLower(), message, now);
         }
     }
@@ -152,7 +160,7 @@ public class SignalRHub : Hub
         {
             foreach (ChatMessage m in mm)
             {
-                await Clients.Caller.SendAsync("addChatHistoryMessage", m.ID, m.FromUserId.ToLower(), m.ToUserId.ToLower(), m.Body, m.SendTime, m.ViewTime.HasValue ? 1 : 0, m.ForwardDetails);
+                await Clients.Caller.SendAsync("addChatHistoryMessage", m.ID, m.FromUserId.ToLower(), m.ToUserId.ToLower(), m.Body, m.SendTime.ToString("yyyy-MM-dd HH:mm"), m.ViewTime.HasValue ? 1 : 0, m.ForwardDetails);
             }
             await Clients.Caller.SendAsync("noMoreHistory", who);
         }
