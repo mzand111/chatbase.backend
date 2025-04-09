@@ -9,5 +9,4 @@ public class UserProfileImage : Model<Guid>
     public byte[]? Image { get; set; }
     public DateTime CreationTime { get; set; }
     public Guid CreatorUserId { get; set; }
-
 }

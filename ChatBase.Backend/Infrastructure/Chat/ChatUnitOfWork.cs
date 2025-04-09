@@ -13,18 +13,20 @@ public class ChatUnitOfWork : UnitOfWorkAsync<ChatDataContext>, IChatUnitOfWork
     {
         ChatMessages = new ChatMessageRepository(_dbContext);
     }
-    public ILDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey> GetRepo<TModel, TDBModel, PrimKey>()
+    public IBaseLDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey> GetRepo<TModel, TDBModel, PrimKey>()
             where TModel : Model<PrimKey>
             where TDBModel : TModel, IConvertibleDBModelEntity<TModel>, new()
             where PrimKey : struct
     {
-        ILDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey> repo = null;
+        IBaseLDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey> repo = null;
 
         if (typeof(TModel) == typeof(ChatMessage))
         {
-            repo = ChatMessages as ILDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey>;
+            repo = ChatMessages as IBaseLDRCompatibleRepositoryAsync<TModel, TDBModel, PrimKey>;
 
         }
         return repo;
     }
+
+
 }

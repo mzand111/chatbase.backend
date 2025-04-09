@@ -43,7 +43,7 @@ namespace ChatBase.Backend
             builder.Services.AddSwaggerGen(
                 c =>
                 {
-                    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Zelvor.Services", Version = "v1" });
+                    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Chatbase.Backend", Version = "v1" });
                     c.AddEnumsWithValuesFixFilters(o =>
                     {
                         // add schema filter to fix enums (add 'x-enumNames' for NSwag or its alias from XEnumNamesAlias) in schema
